@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+pymongo
+motor
+python-dotenv
+scikit-learn
+xgboost
+pandas
+numpy
+joblib
+pytest
+pytest-asyncio
+PyJWT
+pwdlib[argon2]
+httpx2
