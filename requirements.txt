@@ -12,3 +12,6 @@ numpy
 joblib
 pytest
 pytest-asyncio
+PyJWT
+pwdlib[argon2]
+httpx2

@@ -1,18 +1,28 @@
 import pandas as pd
-from datetime import timedelta
+import math
+from app.ml.features import FEATURE_COLUMNS
 from app.ml.loader import get_eta_pipeline, get_delay_pipeline
 
 def predict_eta_and_delay(features: dict):
     eta_pipeline = get_eta_pipeline()
     delay_pipeline = get_delay_pipeline()
     
-    if not eta_pipeline or not delay_pipeline:
+    if eta_pipeline is None or delay_pipeline is None:
         raise ValueError("Model pipelines are not loaded.")
-        
-    df = pd.DataFrame([features])
+
+    missing = [column for column in FEATURE_COLUMNS if column not in features]
+    extra = [column for column in features if column not in FEATURE_COLUMNS]
+    if missing or extra:
+        raise ValueError(f"Inference feature mismatch: missing={missing}, extra={extra}")
+
+    df = pd.DataFrame([[features[column] for column in FEATURE_COLUMNS]], columns=FEATURE_COLUMNS)
     
     remaining_minutes = eta_pipeline.predict(df)[0]
     delay_minutes = delay_pipeline.predict(df)[0]
+    if not all(math.isfinite(float(value)) for value in (remaining_minutes, delay_minutes)):
+        raise ValueError("Model returned a non-finite prediction.")
+    remaining_minutes = max(0.0, float(remaining_minutes))
+    delay_minutes = max(0.0, float(delay_minutes))
     
     return remaining_minutes, delay_minutes
 
