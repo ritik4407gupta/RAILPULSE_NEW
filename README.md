@@ -67,8 +67,8 @@ These instructions start the complete app from a fresh GitHub clone on Linux or 
 Replace the URL with this repository's GitHub clone URL:
 
 ```bash
-git clone https://github.com/<YOUR_ACCOUNT>/<YOUR_REPOSITORY>.git
-cd <YOUR_REPOSITORY>
+git clone https://github.com/ritik4407gupta/RAILPULSE_NEW.git
+cd RAILPULSE_NEW
 ```
 
 Run the following commands from the repository root unless a step says otherwise.
