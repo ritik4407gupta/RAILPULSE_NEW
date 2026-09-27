@@ -31,4 +31,15 @@ async def upsert_simulation_state(train_number: str, state: dict[str, Any]) -> d
     await db.db["simulation_states"].update_one(
         {"train_number": train_number}, {"$set": document}, upsert=True
     )
+    live_document = {
+        **state,
+        "train_number": train_number,
+        "state_source": "simulation",
+        "data_source": "SIMULATION",
+        "updated_at": simulated_at,
+        "simulated_at": simulated_at,
+    }
+    await db.db["live_train_state"].update_one(
+        {"train_number": train_number}, {"$set": live_document}, upsert=True
+    )
     return simulated_at

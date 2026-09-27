@@ -65,7 +65,7 @@ The backend currently returns `future_data_required` for upcoming station ETAs, 
 - CORS error: add the exact frontend origin to `CORS_ORIGINS` and restart FastAPI.
 - `401`: sign in again; the client clears an expired or invalid session.
 - `403`: the account role cannot call that backend route.
-- `404` train state: the backend has no stored live state for that number. Staff simulation is separate and does not make it live.
+- `404` train state: the backend has no stored live state for that number. Staff simulation adds or updates that train in the live feed.
 - Prediction unavailable: confirm MongoDB and the model are healthy, then inspect `/docs` and `/openapi.json`.
 
 ## 8. Production notes

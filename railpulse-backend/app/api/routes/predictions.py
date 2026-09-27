@@ -25,7 +25,8 @@ async def predict_eta(request: TrainStateRequest, current_user: dict = Depends(g
             "predicted_eta": response.predicted_eta,
             "predicted_remaining_minutes": response.predicted_remaining_minutes,
             "predicted_delay_minutes": response.predicted_delay_minutes,
-            "delay_category": response.delay_category
+            "delay_category": response.delay_category,
+            "risk_level": response.risk_level,
         }
         await save_prediction(prediction_doc)
         await upsert_live_state(request.train_number, request.model_dump(mode="json"))

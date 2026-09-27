@@ -37,3 +37,11 @@ def classify_delay(delay_minutes: float) -> str:
         return "MAJOR"
     else:
         return "SEVERE"
+
+
+def classify_risk(delay_minutes: float) -> str:
+    if delay_minutes <= 15:
+        return "LOW"
+    elif delay_minutes <= 60:
+        return "MODERATE"
+    return "HIGH"

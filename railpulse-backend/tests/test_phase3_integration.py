@@ -114,18 +114,32 @@ def test_phase3_documented_and_future_capabilities(monkeypatch):
     assert risk.json()["status"] == "future_data_required"
 
 
-def test_simulation_is_separate_from_live_state(monkeypatch):
+def test_simulation_updates_live_state_and_remains_recorded(monkeypatch):
     client, fake_database, headers = make_client(monkeypatch)
     payload = {
         "train_number": "12345",
         "current_timestamp": "2026-09-25T12:00:00Z",
         "destination": "TestStation",
+        "current_delay_minutes": 10,
     }
 
     simulation = client.post("/api/v1/simulation/update", json=payload, headers=headers)
     assert simulation.status_code == 200
     assert len(fake_database["simulation_states"].documents) == 1
-    assert fake_database["live_train_state"].documents == []
+    live_trains = client.get("/api/v1/trains", headers=headers)
+    assert live_trains.status_code == 200
+    assert live_trains.json()["count"] == 1
+    assert live_trains.json()["trains"][0]["train_number"] == "12345"
+    assert live_trains.json()["trains"][0]["data_source"] == "SIMULATION"
+    assert fake_database["live_train_state"].documents[0]["state_source"] == "simulation"
+
+    payload["current_delay_minutes"] = 15
+    updated_simulation = client.post("/api/v1/simulation/update", json=payload, headers=headers)
+    assert updated_simulation.status_code == 200
+    live_trains = client.get("/api/v1/trains", headers=headers)
+    assert live_trains.json()["count"] == 1
+    assert live_trains.json()["trains"][0]["current_delay_minutes"] == 15
+    assert len(fake_database["simulation_states"].documents) == 1
 
 
 def test_prediction_history_is_paginated(monkeypatch):

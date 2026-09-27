@@ -10,6 +10,7 @@ class PredictionResponse(BaseModel):
     eta_lower: datetime
     eta_upper: datetime
     delay_category: str
+    risk_level: str
     confidence: float
     model_version: str
 

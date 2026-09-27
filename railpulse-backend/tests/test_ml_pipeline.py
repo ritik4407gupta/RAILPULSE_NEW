@@ -1,13 +1,20 @@
 import joblib
 
 from app.ml.features import FEATURE_COLUMNS, build_inference_features
-from app.ml.predictor import predict_eta_and_delay
+from app.ml.predictor import classify_risk, predict_eta_and_delay
 from app.schemas.train import TrainStateRequest
 from training.train import load_training_data, split_dataset
 
 
 MODEL_PATH = "models/railpulse_eta_model.pkl"
 DATA_PATH = "data/indian_railway_delay_data_.csv"
+
+
+def test_risk_classification_uses_predicted_delay_bands():
+    assert classify_risk(15) == "LOW"
+    assert classify_risk(15.1) == "MODERATE"
+    assert classify_risk(60) == "MODERATE"
+    assert classify_risk(60.1) == "HIGH"
 
 
 def test_training_features_have_no_target_derived_delay_fields():

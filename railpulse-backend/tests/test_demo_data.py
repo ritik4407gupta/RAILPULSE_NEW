@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from app.core.security import hash_password
 from app.db.mongodb import db
 from app.main import app
+from app.services import eta_service
 
 
 class FakeCursor:
@@ -175,7 +176,13 @@ def test_list_trains_and_state_work_for_seeded_demo(monkeypatch):
 
 
 def test_prediction_works_for_seeded_demo_train(monkeypatch):
-    client, _, headers = make_auth_client(monkeypatch, "ADMIN")
+    client, fake_database, headers = make_auth_client(monkeypatch, "ADMIN")
+    monkeypatch.setattr(eta_service, "predict_eta_and_delay", lambda features: (120.0, 25.0))
+    monkeypatch.setattr(eta_service, "get_uncertainty_metadata", lambda: {
+        "eta_interval_minutes": 30,
+        "eta_calibration_coverage": 0.9,
+    })
+    monkeypatch.setattr(eta_service, "get_model_metadata", lambda: {"version": "test"})
     seed = client.post("/api/v1/demo/seed", headers=headers)
     assert seed.status_code == 200
 
@@ -191,3 +198,5 @@ def test_prediction_works_for_seeded_demo_train(monkeypatch):
     )
     assert prediction.status_code == 200
     assert prediction.json()["train_number"] == "12301"
+    assert prediction.json()["risk_level"] in {"LOW", "MODERATE", "HIGH"}
+    assert fake_database["predictions"].documents[0]["risk_level"] == prediction.json()["risk_level"]

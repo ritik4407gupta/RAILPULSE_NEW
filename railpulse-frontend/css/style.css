@@ -1008,6 +1008,22 @@ h3 {
     color: var(--ink)
 }
 
+.prediction-details b.risk-low {
+    color: var(--green)
+}
+
+.prediction-details b.risk-moderate {
+    color: var(--orange-dark)
+}
+
+.prediction-details b.risk-high {
+    color: var(--red)
+}
+
+.prediction-details b.risk-unknown {
+    color: var(--muted)
+}
+
 .prediction-meta {
     border-top: 1px solid var(--line);
     color: var(--muted);

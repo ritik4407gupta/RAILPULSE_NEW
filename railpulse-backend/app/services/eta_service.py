@@ -1,7 +1,7 @@
 from app.schemas.train import TrainStateRequest
 from app.schemas.prediction import PredictionResponse
 from app.services.feature_service import build_feature_vector
-from app.ml.predictor import predict_eta_and_delay, classify_delay
+from app.ml.predictor import predict_eta_and_delay, classify_delay, classify_risk
 from app.ml.loader import get_model_metadata, get_uncertainty_metadata
 from datetime import timedelta
 import logging
@@ -30,6 +30,7 @@ async def calculate_eta(request: TrainStateRequest) -> PredictionResponse:
     eta_upper = predicted_eta + timedelta(minutes=float(interval_minutes))
     
     delay_category = classify_delay(delay_minutes)
+    risk_level = classify_risk(delay_minutes)
     
     metadata = get_model_metadata()
     version = metadata.get("version", "unknown")
@@ -42,6 +43,7 @@ async def calculate_eta(request: TrainStateRequest) -> PredictionResponse:
         eta_lower=eta_lower,
         eta_upper=eta_upper,
         delay_category=delay_category,
+        risk_level=risk_level,
         confidence=float(calibration_coverage),
         model_version=version
     )
