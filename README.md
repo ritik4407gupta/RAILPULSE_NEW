@@ -2,7 +2,7 @@
 
 RailPulse is a railway ETA and delay-intelligence web application. It combines a static, framework-free frontend with a Python FastAPI service that validates train state, runs the existing ETA/delay ML pipeline, and persists train state and prediction history in MongoDB.
 
-This is the **main repository overview**. Component-specific setup and API details remain in [railpulse-backend/README.md](railpulse-backend/README.md) and [railpulse-frontend/README.md](railpulse-frontend/README.md).
+This is the **main repository overview** and the recommended clone-to-running guide. Component-specific API and implementation details remain in [railpulse-backend/README.md](railpulse-backend/README.md) and [railpulse-frontend/README.md](railpulse-frontend/README.md).
 
 ## Contents
 
@@ -55,56 +55,112 @@ railpulse-github/
 
 - Python 3.10 or newer; local development has been run with Python 3.12.
 - MongoDB running locally or an accessible MongoDB deployment.
-- The model artifact at `railpulse-backend/models/railpulse_eta_model.pkl` (included in this repository).
+- The trained model artifact at `railpulse-backend/models/railpulse_eta_model.pkl`. Model binaries are ignored by Git, so generate this file after cloning if it is absent (steps below).
 - A modern browser. The frontend uses JavaScript ES modules and must be served over HTTP; opening `index.html` directly as a `file://` URL is not supported.
 
 ## Run locally
 
-Open two terminals and keep both servers running.
+These instructions start the complete app from a fresh GitHub clone on Linux or macOS. Use three terminals and keep the MongoDB container, backend server, and frontend server running while you use the site. The example consistently uses `http://localhost:3000` for the frontend and `http://localhost:8000` for FastAPI.
+
+### 0. Clone the repository
+
+Replace the URL with this repository's GitHub clone URL:
+
+```bash
+git clone https://github.com/<YOUR_ACCOUNT>/<YOUR_REPOSITORY>.git
+cd <YOUR_REPOSITORY>
+```
+
+Run the following commands from the repository root unless a step says otherwise.
 
 ### 1. Configure and start the backend
+
+Install Python 3.10 or newer and Docker Desktop/Docker Engine. Start MongoDB in **Terminal 1**. For a new checkout, create a persistent local database container:
+
+```bash
+docker run -d --name railpulse-mongo -p 27017:27017 -v railpulse-mongo-data:/data/db mongo:7
+```
+
+If Docker says the container name already exists, start that existing container instead:
+
+```bash
+docker start railpulse-mongo
+docker ps --filter name=railpulse-mongo
+```
+
+Alternatively, use a locally installed MongoDB service listening at `mongodb://localhost:27017`.
+
+In **Terminal 2**, install the backend dependencies and configure the local environment:
 
 ```bash
 cd railpulse-backend
 python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `railpulse-backend/.env` and set a local CORS allowlist matching the frontend origin below:
+Open `railpulse-backend/.env` and set private local admin/staff passwords and a JWT secret. Ensure the CORS origin matches the exact frontend URL below:
 
 ```dotenv
-CORS_ORIGINS=http://127.0.0.1:4175,http://localhost:4175
+CORS_ORIGINS=http://localhost:3000
 MONGODB_URI=mongodb://localhost:27017
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=<choose-a-local-admin-password>
+STAFF_USERNAME=staff
+STAFF_PASSWORD=<choose-a-local-staff-password>
+JWT_SECRET_KEY=<random-secret-at-least-32-characters>
 ```
 
-Ensure MongoDB is running, then start FastAPI from the backend directory so the `app` package resolves correctly:
+The model `.pkl` file is not tracked by Git. If it is missing, generate it from the included training CSV before starting the app:
 
 ```bash
-cd railpulse-backend
-source .venv/bin/activate
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+python training/train.py
 ```
 
-The API is available at `http://127.0.0.1:8000/api/v1`. Interactive API documentation is at `http://127.0.0.1:8000/docs`; the OpenAPI schema is at `http://127.0.0.1:8000/openapi.json`.
+Start FastAPI **from the `railpulse-backend` directory** so Python can import the `app` package:
+
+```bash
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Wait for `Application startup complete`. The health endpoint should return `"status":"ok"`, `"mongodb":"ok"`, and `"model":"ok"` at `http://localhost:8000/api/v1/health/`. Interactive API documentation is at `http://localhost:8000/docs`; the OpenAPI schema is at `http://localhost:8000/openapi.json`.
 
 ### 2. Start the frontend
 
-In a second terminal:
+In **Terminal 3**, start the static frontend server:
 
 ```bash
 cd railpulse-frontend
-python3 -m http.server 4175 --bind 127.0.0.1
+python3 -m http.server 3000 --bind 127.0.0.1
 ```
 
-Open `http://127.0.0.1:4175`. The default frontend API base URL is `http://localhost:8000/api/v1`. To change it, define `window.RAILPULSE_API_BASE_URL` before loading `js/app.js` in `railpulse-frontend/index.html`, as described in [Frontend setup](railpulse-frontend/FRONTEND_SETUP.md).
+Open **http://localhost:3000** so the browser origin matches CORS. The default frontend API URL is `http://localhost:8000/api/v1`; no frontend configuration change is needed. For a different URL, see [Frontend setup](railpulse-frontend/FRONTEND_SETUP.md) and update `CORS_ORIGINS` to the exact frontend origin.
 
 ### 3. Sign in and load demo trains
 
-The backend seeds the configured admin and staff accounts at startup. Set `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `STAFF_USERNAME`, and `STAFF_PASSWORD` in the backend `.env`; use those values to sign in. Do not publish the passwords. Passengers can register through the passenger portal.
+The backend seeds the admin and staff accounts from `railpulse-backend/.env` at startup. Sign in to the matching portal with those usernames and passwords. Do not publish the passwords. Passengers can register through the passenger portal.
 
 From the staff or admin dashboard, use the demo environment controls to seed or refresh demo train state. Admins can also clear demo records. Once train state is available, select a train to inspect it and request an ETA prediction.
+
+To stop the services, press `Ctrl+C` in the frontend and backend terminals. Stop MongoDB when finished:
+
+```bash
+docker stop railpulse-mongo
+```
+
+The named Docker volume preserves database data between container stops.
+
+### Troubleshooting local startup
+
+- **MongoDB connection refused or `ServerSelectionTimeoutError`:** start the existing container with `docker start railpulse-mongo`; verify it with `docker ps --filter name=railpulse-mongo`.
+- **Docker says the name is already in use:** the container already exists; use `docker start railpulse-mongo`, not another `docker run` with that name.
+- **`ModuleNotFoundError: No module named 'app'`:** change into `railpulse-backend`, activate its `.venv`, and run Uvicorn there, not from the repository root.
+- **Frontend says `FastAPI offline`:** open `http://localhost:8000/api/v1/health/`. If healthy, open the frontend at `http://localhost:3000`, ensure `CORS_ORIGINS=http://localhost:3000`, and restart FastAPI after editing `.env`.
+- **Browser reports a CORS error:** CORS must match the frontend origin exactly, including hostname and port. `localhost` and `127.0.0.1` are different origins.
+- **Model unavailable:** verify `railpulse-backend/models/railpulse_eta_model.pkl` exists. If missing, activate the backend virtual environment and run `python training/train.py` from `railpulse-backend`.
+- **Port already in use:** stop the process using it, or choose another port and update both `CORS_ORIGINS` and the URL opened in the browser.
 
 ## Roles and permissions
 
